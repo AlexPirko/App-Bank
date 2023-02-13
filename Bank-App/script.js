@@ -90,3 +90,16 @@ const displayTransactions = function (transactions) {
 }
 
 displayTransactions(account1.transactions)
+
+
+const createNickname = function (accs) {
+  accs.forEach(acc => {
+    acc.nickname = acc.userName
+      .toLowerCase()
+      .split(' ')
+      .map(word => word[0])
+      .join('');
+  })
+}
+createNickname(accounts)
+console.log(accounts)
