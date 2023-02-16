@@ -102,4 +102,35 @@ const createNickname = function (accs) {
   })
 }
 createNickname(accounts)
-console.log(accounts)
+
+const displayBalance = function (transactions) {
+  const balance = transactions.reduce((acc, trans) => acc + trans);
+
+  labelBalance.textContent = `${balance}$`;
+}
+displayBalance(account1.transactions)
+
+
+const displayTotal = function (transactions) {
+  const depositTrans = transactions
+    .filter(trans => trans > 0)
+    .reduce((acc, trans) => acc + trans);
+
+  labelSumIn.textContent = `${depositTrans}$`;
+
+  const withdrawalTrans = transactions
+    .filter(trans => trans < 0)
+    .reduce((acc, trans) => acc + trans);
+
+  labelSumOut.textContent = `${withdrawalTrans}$`;
+
+  const displayInterest = transactions
+    .filter(trans => trans > 0)
+    .map(trans => trans * 0.11)
+    .reduce((acc, trans) => acc + trans)
+
+  labelSumInterest.textContent = `${displayInterest}$`
+}
+
+displayTotal(account1.transactions)
+
