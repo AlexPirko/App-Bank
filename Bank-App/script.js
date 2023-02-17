@@ -65,6 +65,7 @@ const inputLoanAmount = document.querySelector('.form__input--loan-amount');
 const inputCloseUsername = document.querySelector('.form__input--user');
 const inputClosePin = document.querySelector('.form__input--pin');
 
+
 const displayTransactions = function (transactions) {
   containerTransactions.innerHTML = '';
 
@@ -89,8 +90,6 @@ const displayTransactions = function (transactions) {
   });
 }
 
-displayTransactions(account1.transactions)
-
 
 const createNickname = function (accs) {
   accs.forEach(acc => {
@@ -103,34 +102,78 @@ const createNickname = function (accs) {
 }
 createNickname(accounts)
 
-const displayBalance = function (transactions) {
-  const balance = transactions.reduce((acc, trans) => acc + trans);
 
+const displayBalance = function (account) {
+  const balance = account.transactions.reduce((acc, trans) => acc + trans);
+  account.balance = balance;
   labelBalance.textContent = `${balance}$`;
 }
-displayBalance(account1.transactions)
 
 
-const displayTotal = function (transactions) {
-  const depositTrans = transactions
+const displayTotal = function (account) {
+  const depositTrans = account.transactions
     .filter(trans => trans > 0)
-    .reduce((acc, trans) => acc + trans);
+    .reduce((acc, trans) => acc + trans, 0);
 
   labelSumIn.textContent = `${depositTrans}$`;
 
-  const withdrawalTrans = transactions
+  const withdrawalTrans = account.transactions
     .filter(trans => trans < 0)
-    .reduce((acc, trans) => acc + trans);
+    .reduce((acc, trans) => acc + trans, 0);
 
   labelSumOut.textContent = `${withdrawalTrans}$`;
 
-  const displayInterest = transactions
+  const displayInterest = account.transactions
     .filter(trans => trans > 0)
-    .map(trans => trans * 0.11)
-    .reduce((acc, trans) => acc + trans)
+    .map(trans => trans * account.interest / 100)
+    .reduce((acc, trans) => acc + trans, 0)
+    .toFixed(2)
 
   labelSumInterest.textContent = `${displayInterest}$`
 }
 
-displayTotal(account1.transactions)
+const updateUi = function (acc) {
+  displayBalance(acc);
+  displayTransactions(acc.transactions);
+  displayTotal(acc);
+}
+
+let currAccount;
+
+btnLogin.addEventListener('click', function (e) {
+  e.preventDefault();
+  currAccount = accounts.find(account => account.nickname === inputLoginUsername.value);
+
+  if (currAccount?.pin === Number(inputLoginPin.value)) {
+    containerApp.style.opacity = '1';
+
+    labelWelcome.textContent = `Добро пожаловать, ${currAccount.userName.split(' ')[0]}!`;
+
+    inputLoginUsername.value = '';
+    inputLoginPin.value = '';
+    inputLoginPin.blur();
+
+    updateUi(currAccount);
+  };
+});
+
+
+btnTransfer.addEventListener('click', function (e) {
+  e.preventDefault();
+  const transferAmount = Number(inputTransferAmount.value);
+  const userNickname = inputTransferTo.value;
+  const userAccount = accounts.find(account => account.nickname === userNickname);
+  inputTransferAmount.value = '';
+  inputTransferTo.value = '';
+
+  if (transferAmount > 0 &&
+    currAccount.balance >= transferAmount &&
+    userAccount &&
+    currAccount.nickname !== userAccount?.nickname) {
+    currAccount.transactions.push(-transferAmount);
+    userAccount.transactions.push(transferAmount);
+    updateUi(currAccount);
+  }
+})
+console.log(accounts)
 
