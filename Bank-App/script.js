@@ -119,6 +119,22 @@ const inputLoanAmount = document.querySelector('.form__input--loan-amount');
 const inputCloseUsername = document.querySelector('.form__input--user');
 const inputClosePin = document.querySelector('.form__input--pin');
 
+const formatTransactionDate = function (date) {
+  const getDaysBetweenDates = (date1, date2) =>
+    Math.round(Math.abs((date2-date1) / (1000 * 60 * 60 * 24)));
+
+  const dayPassed = getDaysBetweenDates(new Date(), date);
+
+  if(dayPassed === 0) return 'Today';
+  if(dayPassed === 1) return 'Yesterday';
+  if(dayPassed <= 7) return '${dayPassed} days ago';
+  else {
+    const day = `${date.getDate()}`.padStart(2, '0');
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+}
 
 const displayTransactions = function (account, sort = false) {
   containerTransactions.innerHTML = '';
@@ -134,11 +150,7 @@ const displayTransactions = function (account, sort = false) {
     }
 
     const date = new Date(account.transactionsDates[index]);
-    const day = `${date.getDate()}`.padStart(2, '0');
-    const month = `${date.getMonth() + 1}`.padStart(2, '0');
-    const year = date.getFullYear();
-
-    const transDate = `${day}/${month}/${year}`;
+    const transDate = formatTransactionDate(date);
 
     const transactionRow = `
       <div class="transactions__row">
