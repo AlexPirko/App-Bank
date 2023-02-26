@@ -119,7 +119,8 @@ const inputLoanAmount = document.querySelector('.form__input--loan-amount');
 const inputCloseUsername = document.querySelector('.form__input--user');
 const inputClosePin = document.querySelector('.form__input--pin');
 
-const formatTransactionDate = function (date) {
+
+const formatTransactionDate = function (date, locale) {
   const getDaysBetweenDates = (date1, date2) =>
     Math.round(Math.abs((date2-date1) / (1000 * 60 * 60 * 24)));
 
@@ -129,12 +130,17 @@ const formatTransactionDate = function (date) {
   if(dayPassed === 1) return 'Yesterday';
   if(dayPassed <= 7) return '${dayPassed} days ago';
   else {
-    const day = `${date.getDate()}`.padStart(2, '0');
-    const month = `${date.getMonth() + 1}`.padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
+    return new Intl.DateTimeFormat(locale).format(date);
   }
-}
+};
+
+const formatCurrency = function (value, locale, currency) {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: currency,
+  }).format(value);
+};
+
 
 const displayTransactions = function (account, sort = false) {
   containerTransactions.innerHTML = '';
@@ -150,7 +156,8 @@ const displayTransactions = function (account, sort = false) {
     }
 
     const date = new Date(account.transactionsDates[index]);
-    const transDate = formatTransactionDate(date);
+    const transDate = formatTransactionDate(date, account.locale);
+    const formattedTrans = formatCurrency(transaction, account.locale, account.currency);
 
     const transactionRow = `
       <div class="transactions__row">
@@ -158,7 +165,7 @@ const displayTransactions = function (account, sort = false) {
           ${index + 1} ${transMode}
         </div>
         <div class="transactions__date">${transDate}</div>
-        <div class="transactions__value">${transaction.toFixed(2)}$</div>
+        <div class="transactions__value">${formattedTrans}</div>
       </div>
     `
     containerTransactions.insertAdjacentHTML('afterbegin', transactionRow)
@@ -181,7 +188,7 @@ createNickname(accounts)
 const displayBalance = function (account) {
   const balance = account.transactions.reduce((acc, trans) => acc + trans);
   account.balance = balance;
-  labelBalance.textContent = `${balance}$`;
+  labelBalance.textContent = formatCurrency(balance, account.locale, account.currency);
 }
 
 
@@ -190,13 +197,13 @@ const displayTotal = function (account) {
     .filter(trans => trans > 0)
     .reduce((acc, trans) => acc + trans, 0);
 
-  labelSumIn.textContent = `${depositTrans}$`;
+  labelSumIn.textContent = formatCurrency(depositTrans, account.locale, account.currency);
 
   const withdrawalTrans = account.transactions
     .filter(trans => trans < 0)
     .reduce((acc, trans) => acc + trans, 0);
 
-  labelSumOut.textContent = `${withdrawalTrans}$`;
+  labelSumOut.textContent = formatCurrency(withdrawalTrans, account.locale, account.currency);
 
   const displayInterest = account.transactions
     .filter(trans => trans > 0)
@@ -204,7 +211,7 @@ const displayTotal = function (account) {
     .reduce((acc, trans) => acc + trans, 0)
     .toFixed(2)
 
-  labelSumInterest.textContent = `${displayInterest}$`
+  labelSumInterest.textContent = formatCurrency(displayInterest, account.locale, account.currency);
 }
 
 const updateUi = function (acc) {
@@ -213,14 +220,37 @@ const updateUi = function (acc) {
   displayTotal(acc);
 }
 
-let currAccount;
+let currAccount, currentLogOutTimer;
 // currAccount = account1;
 // updateUi(currAccount);
 // containerApp.style.opacity = 1;
 
+const startLogoutTimer = function() {
+  const logoutTimerCallback = function() {
+    const minutes = String(Math.trunc(time/60)).padStart(2, '0');
+    const seconds = String(time % 60).padStart(2, '0');
+
+    labelTimer.textContent = `${minutes}:${seconds}`;
+
+    if(time===0) {
+      clearInterval(logoutTimer);
+      containerApp.style.opacity = '0';
+      labelWelcome.textContent = `Войдите в свой аккаунт`;
+    }
+    time--;
+  }
+
+  let time = 300;
+  logoutTimerCallback();
+  const logoutTimer = setInterval(logoutTimerCallback, 1000);
+
+  return logoutTimer;
+};
+
 btnLogin.addEventListener('click', function (e) {
   e.preventDefault();
   currAccount = accounts.find(account => account.nickname === inputLoginUsername.value);
+
 
   if (currAccount?.pin === Number(inputLoginPin.value)) {
     containerApp.style.opacity = '1';
@@ -228,14 +258,26 @@ btnLogin.addEventListener('click', function (e) {
     labelWelcome.textContent = `Добро пожаловать, ${currAccount.userName.split(' ')[0]}!`;
 
     const now = new Date();
-    const day = `${now.getDate()}`.padStart(2, '0');
-    const month = `${now.getMonth() + 1}`.padStart(2, '0');
-    const year = now.getFullYear();
-    labelDate.textContent = `${day}/${month}/${year}`;
+    const options = {
+      hour: 'numeric',
+      minute: 'numeric',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      weekday: 'long',
+  };
+
+  labelDate.textContent = new Intl.DateTimeFormat(
+    currAccount.locale,
+    options
+  ).format(now);
 
     inputLoginUsername.value = '';
     inputLoginPin.value = '';
     inputLoginPin.blur();
+
+    clearInterval(currentLogOutTimer);
+    currentLogOutTimer = startLogoutTimer();
 
     updateUi(currAccount);
   };
@@ -261,6 +303,9 @@ btnTransfer.addEventListener('click', function (e) {
     userAccount.transactionsDates.push(new Date().toISOString());
 
     updateUi(currAccount);
+
+    clearInterval(currentLogOutTimer);
+    currentLogOutTimer = startLogoutTimer();
   }
 })
 console.log(accounts)
@@ -270,13 +315,20 @@ btnLoan.addEventListener('click', function (e) {
 
   const loanAmount = Number(inputLoanAmount.value);
 
-  if (loanAmount > 0 && currAccount.transactions.some(trans => trans > loanAmount * 0.1)) {
-    currAccount.transactions.push(loanAmount);
-    currAccount.transactionsDates.push(new Date().toISOString());
-    updateUi(currAccount);
+  if (
+    loanAmount > 0 &&
+    currAccount.transactions.some(trans => trans >= (loanAmount * 10) / 100)) {
+    setTimeout(function () {
+      currAccount.transactions.push(loanAmount);
+      currAccount.transactionsDates.push(new Date().toISOString());
+      updateUi(currAccount);
+    }, 5000);
   }
   inputLoanAmount.value = '';
-})
+
+  clearInterval(currentLogOutTimer);
+  currentLogOutTimer = startLogoutTimer();
+});
 
 let isSorted = false;
 
